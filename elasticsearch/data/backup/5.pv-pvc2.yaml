@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: elastic-data-pv2
+  labels:
+    name: elastic-data-pv2
+spec:
+  storageClassName: local-storage
+  capacity:
+    storage: 50Gi
+  volumeMode: Filesystem
+  accessModes:
+  - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  local:
+    path: "/data"
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          - ketiops-gpu-node-6

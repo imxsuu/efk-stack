@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: fluent-bit
+  namespace: efk-stack 
+spec:
+  selector:
+    matchLabels:
+      k8s-app: fluent-bit-logging
+  template:
+    metadata:
+      labels:
+        k8s-app: fluent-bit-logging
+    spec:
+      containers:
+      - name: fluent-bit
+        image: fluent/fluent-bit:1.9.7
+        imagePullPolicy: Always
+        env:
+        - name: FLUENT_ELASTICSEARCH_HOST
+          value: "elasticsearch-client.efk-stack.svc.cluster.local"
+        - name: FLUENT_ELASTICSEARCH_PORT
+          value: "9200"
+        - name: FLUENT_ELASTICSEARCH_SCHEME
+          value: "http"
+          #- name: FLUENT_ELASTICSEARCH_USER # even if not used they are necessary
+          # value: none
+          # - name: FLUENT_ELASTICSEARCH_PASSWORD
+          # value: none
+        volumeMounts:
+        - name: varlog
+          mountPath: /var/log
+        - name: varlibdockercontainers
+          mountPath: /var/lib/docker/containers
+          readOnly: true
+        ##### change docker root path #####
+        - name: datadockercontainers
+          mountPath: /data/docker/containers
+          readOnly: true
+        - name: journal
+          mountPath: /journal
+          readOnly: true
+        - name: fluent-bit-config
+          mountPath: /fluent-bit/etc/
+        ##### set log files path #####
+        - name: datalogs
+          mountPath: /data/sjjeon/logs
+      terminationGracePeriodSeconds: 10
+      volumes:
+      - name: varlog
+        hostPath:
+          path: /var/log
+      - name: journal
+        hostPath:
+          path: /var/log/journal
+      - name: varlibdockercontainers
+        hostPath:
+          path: /var/lib/docker/containers
+      ##### change docker root path #####
+      - name: datadockercontainers
+        hostPath:
+          path: /data/docker/containers
+      - name: fluent-bit-config
+        configMap:
+          name: fluent-bit-config
+      ##### set log files path #####
+      - name: datalogs
+        hostPath:
+          path: /data/sjjeon/logs
+      serviceAccountName: fluent-bit
+      ##### deploy excluding master nodes #####
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/master
+                    operator: NotIn
+                    values:
+                      - 'true'
